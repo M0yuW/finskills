@@ -123,7 +123,7 @@ finskills/
 | 12 | **事件驱动机会识别器** | A股公司事件分析：资产注入、国企改革、分拆上市、回购增持、指数调整、限售股解禁 | [China-market/event-driven-detector/](China-market/event-driven-detector/) |
 | 13 | **量化因子筛选器** | A股多因子筛选，含中国特色因子（换手率、北向资金），基于PMI/社融数据的因子择时 | [China-market/quant-factor-screener/](China-market/quant-factor-screener/) |
 | 14 | **ESG筛选器** | 中国特色ESG分析：双碳目标、共同富裕框架、证监会ESG披露要求 | [China-market/esg-screener/](China-market/esg-screener/) |
-| 15 | **金融数据工具包** 📦 | A股实时数据：行情指标（AKShare）、董监高增减持、北向资金、宏观数据（LPR、PMI、CPI、M2）。无需API密钥。 | [China-market/findata-toolkit/](China-market/findata-toolkit/) |
+| 15 | **金融数据工具包** 📦 | A股实时数据：行情指标（AKShare）、董监高增减持、北向资金、宏观数据（LPR、PMI、CPI、M2）。无需API密钥。 | [China-market/findata-toolkit-cn/](China-market/findata-toolkit-cn/) |
 
 ## 技能架构
 
@@ -251,7 +251,7 @@ China-market 技能并非简单翻译 US-market 版本，而是针对 A 股市�
    cd US-market/findata-toolkit && pip install -r requirements.txt
 
    # A股市场工具包
-   cd China-market/findata-toolkit && pip install -r requirements.txt
+   cd China-market/findata-toolkit-cn && pip install -r requirements.txt
    ```
 3. **自然触发**：使用与技能描述匹配的自然语言查询
 4. **遵循工作流程**：每个技能将引导您完成其分析工作流程

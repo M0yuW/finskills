@@ -13,6 +13,7 @@ Usage:
 """
 import argparse
 import sys
+from statistics import median
 from pathlib import Path
 
 # Ensure project root is on path
@@ -249,37 +250,74 @@ def screen_stocks(symbols: list[str], filters: dict | None = None) -> dict:
     Screen a list of stocks against financial filters.
 
     Default filters (can be overridden):
-        pe_below_industry: True   (P/E below sector average)
+        require_pe_below_sector_median: True  (P/E below sector median)
         min_revenue_growth: 0.0   (positive revenue growth)
+        min_earnings_growth: 0.0  (positive earnings growth)
         max_debt_to_equity: 200   (D/E below 200%)
         min_fcf: 0                (positive free cash flow)
-        min_roic: 0               (positive ROIC)
+        require_roic_above_sector_median: True (ROIC above sector median)
         min_upside: 0.30          (30% analyst upside)
     """
     defaults = {
+        "require_pe_below_sector_median": True,
         "min_revenue_growth": 0.0,
+        "min_earnings_growth": 0.0,
         "max_debt_to_equity": 200.0,
         "min_fcf": 0,
-        "min_roic": 0.0,
+        "require_roic_above_sector_median": True,
         "min_upside": 0.30,
     }
     if filters:
         defaults.update(filters)
 
-    passing = []
-    failing = []
-
+    metrics_cache = {}
+    initial_failures = []
     for sym in symbols:
         try:
             m = fetch_financial_metrics(sym)
             if "error" in m:
-                failing.append({"symbol": sym, "reason": m["error"]})
-                continue
+                initial_failures.append({"symbol": sym, "reason": m["error"]})
+            else:
+                metrics_cache[sym] = m
+        except Exception as e:
+            initial_failures.append({"symbol": sym, "reason": str(e)})
 
+    sector_pe = {}
+    sector_roic = {}
+    for m in metrics_cache.values():
+        sector = m.get("sector") or "Unknown"
+        pe = (m.get("valuation") or {}).get("pe_trailing")
+        roic = (m.get("profitability") or {}).get("roic")
+        if pe is not None and pe > 0:
+            sector_pe.setdefault(sector, []).append(pe)
+        if roic is not None:
+            sector_roic.setdefault(sector, []).append(roic)
+
+    sector_pe_medians = {k: median(v) for k, v in sector_pe.items() if v}
+    sector_roic_medians = {k: median(v) for k, v in sector_roic.items() if v}
+
+    passing = []
+    failing = list(initial_failures)
+
+    for sym, m in metrics_cache.items():
+        try:
             reasons = []
+            sector = m.get("sector") or "Unknown"
+
+            pe = (m.get("valuation") or {}).get("pe_trailing")
+            sector_pe_med = sector_pe_medians.get(sector)
+            if defaults["require_pe_below_sector_median"] and pe is not None and sector_pe_med is not None and pe >= sector_pe_med:
+                reasons.append(
+                    f"pe_trailing {pe:.2f} >= sector_median {sector_pe_med:.2f} ({sector})"
+                )
+
             rev_g = m["growth"]["revenue_growth_yoy"]
             if rev_g is not None and rev_g < defaults["min_revenue_growth"]:
                 reasons.append(f"revenue_growth {rev_g:.2%} < {defaults['min_revenue_growth']:.2%}")
+
+            earn_g = m["growth"]["earnings_growth_yoy"]
+            if earn_g is not None and earn_g < defaults["min_earnings_growth"]:
+                reasons.append(f"earnings_growth {earn_g:.2%} < {defaults['min_earnings_growth']:.2%}")
 
             de = m["leverage"]["debt_to_equity"]
             if de is not None and de > defaults["max_debt_to_equity"]:
@@ -290,8 +328,11 @@ def screen_stocks(symbols: list[str], filters: dict | None = None) -> dict:
                 reasons.append(f"free_cash_flow {fcf:,.0f} < {defaults['min_fcf']}")
 
             roic = m["profitability"]["roic"]
-            if roic is not None and roic < defaults["min_roic"]:
-                reasons.append(f"roic {roic:.2%} < {defaults['min_roic']:.2%}")
+            sector_roic_med = sector_roic_medians.get(sector)
+            if defaults["require_roic_above_sector_median"] and roic is not None and sector_roic_med is not None and roic <= sector_roic_med:
+                reasons.append(
+                    f"roic {roic:.2%} <= sector_median {sector_roic_med:.2%} ({sector})"
+                )
 
             upside = m["analyst_consensus"]["upside_pct"]
             if upside is not None and upside < defaults["min_upside"]:
@@ -307,6 +348,14 @@ def screen_stocks(symbols: list[str], filters: dict | None = None) -> dict:
 
     return {
         "filters_applied": defaults,
+        "methodology": {
+            "pe_rule": "P/E compared against sector median computed from screened universe",
+            "roic_rule": "ROIC compared against sector median computed from screened universe",
+        },
+        "sector_benchmarks": {
+            "pe_median": sector_pe_medians,
+            "roic_median": sector_roic_medians,
+        },
         "total_screened": len(symbols),
         "passed": len(passing),
         "failed": len(failing),

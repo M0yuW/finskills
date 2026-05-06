@@ -123,7 +123,7 @@ finskills/
 | 12 | **事件驱动机会识别器** | Analyze A-share corporate events: asset injections, SOE reform, share buyback programs, spin-offs, index rebalancing, lock-up expirations | [China-market/event-driven-detector/](China-market/event-driven-detector/) |
 | 13 | **量化因子筛选器** | Multi-factor A-share screening with China-specific factors (turnover rate, northbound capital), factor timing via PMI/social financing data | [China-market/quant-factor-screener/](China-market/quant-factor-screener/) |
 | 14 | **ESG筛选器** | ESG analysis with Chinese characteristics: dual-carbon goals, common prosperity framework, CSRC ESG disclosure requirements | [China-market/esg-screener/](China-market/esg-screener/) |
-| 15 | **金融数据工具包** 📦 | A股实时数据：行情指标（AKShare）、董监高增减持、北向资金、宏观数据（LPR、PMI、CPI、M2）。无需API密钥。 | [China-market/findata-toolkit/](China-market/findata-toolkit/) |
+| 15 | **金融数据工具包** 📦 | A股实时数据：行情指标（AKShare）、董监高增减持、北向资金、宏观数据（LPR、PMI、CPI、M2）。无需API密钥。 | [China-market/findata-toolkit-cn/](China-market/findata-toolkit-cn/) |
 
 ## Skill Architecture
 
@@ -251,7 +251,7 @@ These skills are designed for Claude (Anthropic's AI assistant). To use them:
    cd US-market/findata-toolkit && pip install -r requirements.txt
 
    # China A-share market toolkit
-   cd China-market/findata-toolkit && pip install -r requirements.txt
+   cd China-market/findata-toolkit-cn && pip install -r requirements.txt
    ```
 3. **Trigger naturally**: Use natural language queries that match the skill descriptions
 4. **Follow workflows**: Each skill will guide you through its analysis workflow

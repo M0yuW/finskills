@@ -40,6 +40,22 @@ def _get_exchange_suffix(symbol: str) -> str:
     return "sh"
 
 
+def _build_quote_lookup() -> dict[str, dict]:
+    """Build a one-time quote lookup map to avoid repeated full-market fetches."""
+    import akshare as ak
+
+    lookup = {}
+    df_quote = ak.stock_zh_a_spot_em()
+    if df_quote is None or df_quote.empty:
+        return lookup
+
+    for _, row in df_quote.iterrows():
+        code = str(row.get("代码", "")).strip()
+        if code:
+            lookup[code] = row.to_dict()
+    return lookup
+
+
 def fetch_basic_info(symbols: list[str]) -> list[dict]:
     """Fetch basic company info for A-share stocks."""
     import akshare as ak
@@ -74,7 +90,7 @@ def fetch_basic_info(symbols: list[str]) -> list[dict]:
     return results
 
 
-def fetch_financial_metrics(symbol: str) -> dict:
+def fetch_financial_metrics(symbol: str, quote_lookup: dict[str, dict] | None = None) -> dict:
     """
     Fetch comprehensive financial metrics for a single A-share stock.
     Uses AKShare to pull valuation, profitability, leverage, and growth data.
@@ -89,7 +105,9 @@ def fetch_financial_metrics(symbol: str) -> dict:
         "industry": "",
         "current_price": None,
         "market_cap": None,
+        "data_quality_flags": [],
     }
+    dq = result["data_quality_flags"]
 
     # --- Basic info ---
     try:
@@ -101,32 +119,37 @@ def fetch_financial_metrics(symbol: str) -> dict:
         result["name"] = info.get("股票简称", "")
         result["industry"] = info.get("行业", "")
         result["market_cap"] = safe_float(info.get("总市值"))
-    except Exception:
-        pass
+    except Exception as e:
+        dq.append(f"basic_info_unavailable: {e}")
 
     # --- Real-time quote ---
     try:
-        df_quote = ak.stock_zh_a_spot_em()
-        if df_quote is not None and not df_quote.empty:
-            row = df_quote[df_quote["代码"] == sym]
-            if not row.empty:
-                row = row.iloc[0]
-                result["current_price"] = safe_float(row.get("最新价"))
-                result["valuation"] = {
-                    "pe_ttm": safe_float(row.get("市盈率-动态")),
-                    "pb": safe_float(row.get("市净率")),
-                    "total_market_cap": safe_float(row.get("总市值")),
-                    "circulating_cap": safe_float(row.get("流通市值")),
-                }
-                result["trading"] = {
-                    "change_pct": safe_float(row.get("涨跌幅")),
-                    "turnover_rate": safe_float(row.get("换手率")),
-                    "volume": safe_float(row.get("成交量")),
-                    "amount": safe_float(row.get("成交额")),
-                    "amplitude": safe_float(row.get("振幅")),
-                }
-    except Exception:
-        pass
+        row = None
+        if quote_lookup is not None:
+            row = quote_lookup.get(sym)
+        else:
+            single_lookup = _build_quote_lookup()
+            row = single_lookup.get(sym)
+
+        if row is not None:
+            result["current_price"] = safe_float(row.get("最新价"))
+            result["valuation"] = {
+                "pe_ttm": safe_float(row.get("市盈率-动态")),
+                "pb": safe_float(row.get("市净率")),
+                "total_market_cap": safe_float(row.get("总市值")),
+                "circulating_cap": safe_float(row.get("流通市值")),
+            }
+            result["trading"] = {
+                "change_pct": safe_float(row.get("涨跌幅")),
+                "turnover_rate": safe_float(row.get("换手率")),
+                "volume": safe_float(row.get("成交量")),
+                "amount": safe_float(row.get("成交额")),
+                "amplitude": safe_float(row.get("振幅")),
+            }
+        else:
+            dq.append("realtime_quote_missing: symbol not found in quote table")
+    except Exception as e:
+        dq.append(f"realtime_quote_unavailable: {e}")
 
     # --- Financial indicators (profitability, leverage) ---
     try:
@@ -152,8 +175,8 @@ def fetch_financial_metrics(symbol: str) -> dict:
                 "bvps": safe_float(latest.get("每股净资产")),
                 "ocf_per_share": safe_float(latest.get("每股经营现金流")),
             }
-    except Exception:
-        pass
+    except Exception as e:
+        dq.append(f"financial_abstract_unavailable: {e}")
 
     # --- Dividend data ---
     try:
@@ -168,8 +191,12 @@ def fetch_financial_metrics(symbol: str) -> dict:
                     "ex_date": str(row.get("除权除息日", "")),
                 })
             result["dividends"] = dividends
-    except Exception:
+    except Exception as e:
+        dq.append(f"dividend_data_unavailable: {e}")
         result["dividends"] = []
+
+    if not result["data_quality_flags"]:
+        result.pop("data_quality_flags", None)
 
     return result
 
@@ -403,13 +430,26 @@ def screen_stocks(symbols: list[str], filters: dict | None = None) -> dict:
 
     passing = []
     failing = []
+    data_quality_issues = []
+
+    quote_lookup = None
+    quote_lookup_error = None
+    try:
+        quote_lookup = _build_quote_lookup()
+    except Exception as e:
+        quote_lookup_error = str(e)
+        data_quality_issues.append(f"quote_lookup_unavailable: {e}")
 
     for sym in symbols:
         try:
-            m = fetch_financial_metrics(sym)
+            m = fetch_financial_metrics(sym, quote_lookup=quote_lookup)
             if "error" in m:
                 failing.append({"symbol": sym, "reason": m["error"]})
                 continue
+            if "data_quality_flags" in m:
+                data_quality_issues.append(
+                    f"{m.get('symbol', sym)}: " + "; ".join(m["data_quality_flags"])
+                )
 
             reasons = []
             pe = (m.get("valuation") or {}).get("pe_ttm")
@@ -442,6 +482,11 @@ def screen_stocks(symbols: list[str], filters: dict | None = None) -> dict:
 
     return {
         "filters_applied": defaults,
+        "data_quality": {
+            "quote_lookup_cached": quote_lookup is not None,
+            "quote_lookup_error": quote_lookup_error,
+            "issues": data_quality_issues,
+        },
         "total_screened": len(symbols),
         "passed": len(passing),
         "failed": len(failing),

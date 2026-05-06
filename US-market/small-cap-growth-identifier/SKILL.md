@@ -1,5 +1,5 @@
 ---
-name: small-cap-growth-identifier
+name: small-cap-growth-identifier-us
 description: Identify high-growth small-cap stocks (market cap under $2B) with strong fundamentals, insider ownership, and low institutional coverage — the kind of overlooked opportunities that larger funds miss. Use when the user asks to find small-cap growth stocks, discover under-the-radar companies, screen for founder-led small caps, identify emerging growth companies, find low-institutional-ownership stocks, or seek multi-bagger candidates with strong fundamentals.
 license: Apache-2.0
 ---

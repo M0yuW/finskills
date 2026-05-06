@@ -17,8 +17,6 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import requests
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.utils import output_json, safe_float, error_exit
 from common.config import get_config
@@ -36,8 +34,10 @@ def _headers() -> dict:
     return {"User-Agent": ua, "Accept": "application/json"}
 
 
-def _rate_limited_get(url: str, params: dict | None = None) -> requests.Response:
+def _rate_limited_get(url: str, params: dict | None = None):
     """GET with rate limiting (10 req/s per SEC policy)."""
+    import requests
+
     time.sleep(0.12)  # ~8 req/s to stay safely under limit
     resp = requests.get(url, headers=_headers(), params=params, timeout=30)
     resp.raise_for_status()

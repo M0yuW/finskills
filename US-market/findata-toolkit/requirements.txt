@@ -12,5 +12,8 @@ scipy>=1.10.0
 # === SEC EDGAR ===
 requests>=2.31.0          # HTTP client for EDGAR API
 
+# === Configuration ===
+pyyaml>=6.0.0             # YAML loader for config/data_sources.yaml
+
 # === Output ===
 tabulate>=0.9.0           # Pretty table output
