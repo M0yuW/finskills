@@ -1,6 +1,6 @@
 ---
 name: findata-toolkit-cn
-description: A股金融数据工具包。提供脚本获取A股实时行情、财务指标、董监高增减持、北向资金、宏观经济数据（LPR、CPI/PPI、PMI、社融、M2）。用于需要实时A股市场数据支撑投资分析时。所有数据源免费，无需API密钥。
+description: A股金融数据工具包。提供脚本获取A股实时行情、财务指标、董监高增减持、北向资金、公告/新闻/快讯/人气榜/融资融券/限售解禁等消息面数据、宏观经济数据（LPR、CPI/PPI、PMI、社融、M2）。用于需要实时A股市场数据支撑投资分析时。所有数据源免费，无需API密钥。
 license: Apache-2.0
 ---
 
@@ -34,7 +34,23 @@ pip install -r requirements.txt
 | `python scripts/stock_data.py --northbound` | 北向资金流向（沪股通/深股通） |
 | `python scripts/stock_data.py 600519 000858 --screen` | 批量筛选 |
 
-### 2. 宏观数据 (`scripts/macro_data.py`)
+### 2. 消息面与舆情数据 (`scripts/news_data.py`)
+
+通过 AKShare 获取A股公告、个股新闻流、全市场快讯、人气榜（散户情绪代理）、融资融券、限售解禁。所有接口失败时优雅降级为 `{"error": ..., "note": ...}`，提示调用方回退到 `web_search`。
+
+| 命令 | 用途 |
+|------|------|
+| `python scripts/news_data.py 600519 --news` | 个股新闻流（东方财富） |
+| `python scripts/news_data.py 600519 --lifting` | 个股限售解禁批次 |
+| `python scripts/news_data.py --announcements` | 全市场公告（默认今日） |
+| `python scripts/news_data.py --announcements --date 20260623 --type 重大事项` | 指定日期/类别公告 |
+| `python scripts/news_data.py --market-news` | 全市场财经快讯（东财/财联社电报） |
+| `python scripts/news_data.py --hot-rank` | 人气榜（散户情绪代理） |
+| `python scripts/news_data.py --margin` | 融资融券明细（最近交易日） |
+
+> 公告类别 `--type` 可选：全部、重大事项、财务报告、融资公告、风险提示、资产重组、信息变更、持股变动。北向资金、董监高增减持请用 `stock_data.py` 的 `--northbound` / `--insider`。
+
+### 3. 宏观数据 (`scripts/macro_data.py`)
 
 通过 AKShare 获取中国宏观经济指标。
 
