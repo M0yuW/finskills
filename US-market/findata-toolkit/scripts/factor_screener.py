@@ -10,6 +10,7 @@ Usage:
     python factor_screener.py --universe "AAPL,MSFT,GOOGL" --factors value,quality --top 5
     python factor_screener.py --sp500-sample --top 10
 """
+from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path

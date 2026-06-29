@@ -11,6 +11,7 @@ Usage:
     python stock_data.py AAPL --history --period 1y    # Price history
     python stock_data.py AAPL MSFT --screen            # Screen with filters
 """
+from __future__ import annotations
 import argparse
 import sys
 from statistics import median

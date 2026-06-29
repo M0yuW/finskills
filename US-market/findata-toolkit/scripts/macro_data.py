@@ -15,6 +15,7 @@ Usage:
     python macro_data.py --employment                 # Employment data
     python macro_data.py --cycle                      # Business cycle assessment
 """
+from __future__ import annotations
 import argparse
 import sys
 from datetime import datetime, timedelta

@@ -11,6 +11,7 @@ Usage:
     python sec_edgar.py filings AAPL --form-type 10-K  # Recent 10-K filings
     python sec_edgar.py cik AAPL                       # Lookup CIK number
 """
+from __future__ import annotations
 import argparse
 import sys
 import time
